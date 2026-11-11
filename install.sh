@@ -12,7 +12,36 @@
 set -u
 export GIT_TERMINAL_PROMPT=0   # a private/mistyped repo fails instead of waiting for a login
 
-USERNAME="${USERNAME:-haadi}"
+# --- no settings given: say what to add, then stop --------------------------
+case "${1:-}" in -h|--help) USERNAME="" ;; esac
+if [ -z "${USERNAME:-}" ]; then
+  SWAPS=$(blkid 2>/dev/null | grep 'TYPE="swap"' | cut -d: -f1 | tr '\n' ' ')
+  if mountpoint -q /boot 2>/dev/null || findmnt /boot >/dev/null 2>&1; then
+    BOOTMSG="OK: /boot is mounted ($(findmnt -no FSTYPE /boot))"
+  else
+    BOOTMSG="PROBLEM: /boot is not mounted. Exit the chroot and mount the ESP on /mnt/boot first."
+  fi
+  cat <<EOF
+
+You need to tell the script who you are. Run it like this (one line):
+
+  USERNAME=yourname HOSTNAME=chimera SWAP_DEV=${SWAPS%% *} \\
+  DOTFILES=https://github.com/YOU/your-dotfiles.git sh install.sh
+
+  USERNAME   required   your login name
+  HOSTNAME   optional   default: chimera
+  SWAP_DEV   optional   swap partition, leave out for none
+                        found here: ${SWAPS:-none}
+  DOTFILES   optional   PUBLIC git repo of config folders (leave out to skip)
+  TZ_NAME    optional   default: Europe/London
+
+$BOOTMSG
+
+Passwords are asked at the very end, after everything is installed.
+EOF
+  exit 1
+fi
+
 HOSTNAME="${HOSTNAME:-chimera}"
 TZ_NAME="${TZ_NAME:-Europe/London}"
 SWAP_DEV="${SWAP_DEV:-}"
